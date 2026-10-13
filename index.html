@@ -899,13 +899,22 @@
                 const doc = await db.collection("albums").doc("rozii_memories_data").get();
                 if (doc.exists) {
                     const data = doc.data();
-                    pages = data.pages || [];
-                    gallery = data.gallery || [];
-                    gifts = data.gifts || [];
+                    // تنظيف البيانات: نحتفظ فقط بالعناصر الصالحة
+                    pages = Array.isArray(data.pages) ? data.pages.filter(p => p && p.title && p.title.trim() !== '') : [];
+                    gallery = Array.isArray(data.gallery) ? data.gallery.filter(g => g && g.image && g.image.trim() !== '') : [];
+                    gifts = Array.isArray(data.gifts) ? data.gifts.filter(g => g && g.title && g.title.trim() !== '') : [];
+                } else {
+                    pages = [];
+                    gallery = [];
+                    gifts = [];
                 }
             } catch (error) {
                 console.error("Error loading from DB", error);
+                pages = [];
+                gallery = [];
+                gifts = [];
             }
+            console.log("Loaded - pages:", pages.length, "gallery:", gallery.length, "gifts:", gifts.length);
             renderBook();
         }
 
@@ -918,9 +927,10 @@
             const navControls = document.getElementById('navControls');
             let html = '';
 
-            // ⭐ الشرط المعدل: الغلاف يظهر فقط أول مرة، لكن إذا الكتاب فاضي تظهر رسالة الترحيب دائماً
-            if (!hasVisitedBefore) {
-                // أول زيارة: غلاف الكتاب
+            const empty = isBookEmpty();
+
+            // ⭐ أول زيارة + الكتاب فاضي → غلاف
+            if (!hasVisitedBefore && empty) {
                 html += `
                     <div class="page cover-page" style="display: flex;">
                         <div class="cover-decoration">✦ ✦ ✦</div>
@@ -936,8 +946,8 @@
                 return;
             }
 
-            // الكتاب فاضي → رسالة الترحيب (تظهر دائماً بغض النظر عن الزيارة)
-            if (isBookEmpty()) {
+            // ⭐ الكتاب فاضي (بعد الزيارة الأولى أو أي زيارة) → رسالة الترحيب
+            if (empty) {
                 html += `
                     <div class="page empty-page" style="display: flex;">
                         <div class="empty-icon">📖✨</div>
@@ -951,6 +961,7 @@
                 return;
             }
 
+            // ⭐ فيه محتوى → اعرض الصفحات
             const allPages = [];
 
             pages.forEach((p, idx) => {
@@ -969,7 +980,6 @@
                 allPages.push({ type: 'gifts' });
             }
 
-            // تأكد أن currentPage في النطاق
             if (currentPage >= allPages.length) {
                 currentPage = 0;
             }

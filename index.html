@@ -832,8 +832,8 @@
         let pages = [];
         let gallery = [];
         let gifts = [];
-        let currentPage = 0;
-        let hasVisitedBefore = localStorage.getItem('roziiVisited') === 'true';
+        let currentPage = -1; // -1 = غلاف الكتاب
+        let dataLoaded = false;
 
         function setTheme(theme) {
             document.body.className = 'theme-' + theme;
@@ -899,7 +899,6 @@
                 const doc = await db.collection("albums").doc("rozii_memories_data").get();
                 if (doc.exists) {
                     const data = doc.data();
-                    // تنظيف البيانات: نحتفظ فقط بالعناصر الصالحة
                     pages = Array.isArray(data.pages) ? data.pages.filter(p => p && p.title && p.title.trim() !== '') : [];
                     gallery = Array.isArray(data.gallery) ? data.gallery.filter(g => g && g.image && g.image.trim() !== '') : [];
                     gifts = Array.isArray(data.gifts) ? data.gifts.filter(g => g && g.title && g.title.trim() !== '') : [];
@@ -914,6 +913,7 @@
                 gallery = [];
                 gifts = [];
             }
+            dataLoaded = true;
             console.log("Loaded - pages:", pages.length, "gallery:", gallery.length, "gifts:", gifts.length);
             renderBook();
         }
@@ -927,10 +927,8 @@
             const navControls = document.getElementById('navControls');
             let html = '';
 
-            const empty = isBookEmpty();
-
-            // ⭐ أول زيارة + الكتاب فاضي → غلاف
-            if (!hasVisitedBefore && empty) {
+            // ⭐ 1. غلاف الكتاب - يظهر دائماً في البداية (currentPage === -1)
+            if (currentPage === -1) {
                 html += `
                     <div class="page cover-page" style="display: flex;">
                         <div class="cover-decoration">✦ ✦ ✦</div>
@@ -946,8 +944,8 @@
                 return;
             }
 
-            // ⭐ الكتاب فاضي (بعد الزيارة الأولى أو أي زيارة) → رسالة الترحيب
-            if (empty) {
+            // ⭐ 2. الكتاب فاضي → رسالة الترحيب
+            if (isBookEmpty()) {
                 html += `
                     <div class="page empty-page" style="display: flex;">
                         <div class="empty-icon">📖✨</div>
@@ -961,7 +959,7 @@
                 return;
             }
 
-            // ⭐ فيه محتوى → اعرض الصفحات
+            // ⭐ 3. فيه محتوى → اعرض الصفحات
             const allPages = [];
 
             pages.forEach((p, idx) => {
@@ -980,7 +978,7 @@
                 allPages.push({ type: 'gifts' });
             }
 
-            if (currentPage >= allPages.length) {
+            if (currentPage >= allPages.length || currentPage < 0) {
                 currentPage = 0;
             }
 
@@ -1087,7 +1085,7 @@
         }
 
         function getTotalPages() {
-            if (isBookEmpty()) return 1;
+            if (isBookEmpty()) return 0;
             let total = pages.length;
             if (pages.length > 0) total += 1;
             if (gallery.length > 0) total += 1;
@@ -1096,8 +1094,6 @@
         }
 
         function openBook() {
-            localStorage.setItem('roziiVisited', 'true');
-            hasVisitedBefore = true;
             currentPage = 0;
             renderBook();
         }
@@ -1372,7 +1368,7 @@
             }
 
             closeEditModal();
-            currentPage = 0;
+            currentPage = -1; // ارجعي للغلاف بعد الحفظ
             renderBook();
         }
 
@@ -1384,17 +1380,7 @@
             return (str || '').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
-        function checkSharedMemory() {
-            const params = new URLSearchParams(window.location.search);
-            const memIdx = params.get('memory');
-            if (memIdx !== null && hasVisitedBefore) {
-                currentPage = parseInt(memIdx);
-            }
-        }
-
-        initData().then(() => {
-            checkSharedMemory();
-        });
+        initData();
     </script>
 </body>
 </html>

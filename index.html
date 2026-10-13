@@ -909,12 +909,18 @@
             renderBook();
         }
 
+        function isBookEmpty() {
+            return pages.length === 0 && gallery.length === 0 && gifts.length === 0;
+        }
+
         function renderBook() {
             const book = document.getElementById('bookElement');
             const navControls = document.getElementById('navControls');
             let html = '';
 
+            // ⭐ الشرط المعدل: الغلاف يظهر فقط أول مرة، لكن إذا الكتاب فاضي تظهر رسالة الترحيب دائماً
             if (!hasVisitedBefore) {
+                // أول زيارة: غلاف الكتاب
                 html += `
                     <div class="page cover-page" style="display: flex;">
                         <div class="cover-decoration">✦ ✦ ✦</div>
@@ -930,7 +936,8 @@
                 return;
             }
 
-            if (pages.length === 0 && gallery.length === 0 && gifts.length === 0) {
+            // الكتاب فاضي → رسالة الترحيب (تظهر دائماً بغض النظر عن الزيارة)
+            if (isBookEmpty()) {
                 html += `
                     <div class="page empty-page" style="display: flex;">
                         <div class="empty-icon">📖✨</div>
@@ -960,6 +967,11 @@
 
             if (gifts.length > 0) {
                 allPages.push({ type: 'gifts' });
+            }
+
+            // تأكد أن currentPage في النطاق
+            if (currentPage >= allPages.length) {
+                currentPage = 0;
             }
 
             const page = allPages[currentPage];
@@ -1065,6 +1077,7 @@
         }
 
         function getTotalPages() {
+            if (isBookEmpty()) return 1;
             let total = pages.length;
             if (pages.length > 0) total += 1;
             if (gallery.length > 0) total += 1;
